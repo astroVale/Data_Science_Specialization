@@ -1,0 +1,177 @@
+---
+title: "Impact of Severe Weather Events on the Population Health and Economy in US"
+author: "Valentina Scipione"
+date: "23 May 2015"
+output: html_document
+---
+
+## Synopsis
+
+Storms and other severe weather events can cause both public health and economic problems for communities and municipalities. Many severe events can result in fatalities, injuries, and property damage, and preventing such outcomes to the extent possible is a key concern.
+
+In this report we aim to analyse the impact of severe weather events in order to unveil which types of weather events are the most harmful with respect to population health and economy. 
+We found out that the most damaging events for public health are tornadoes, whereas hurrycanes and typhoons are responsible for the most economic losses, mostly due to property damages.
+
+## Loading and Processing the Raw Data
+
+We explored the [U.S. National Oceanic and Atmospheric Administration's (NOAA) storm database](https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2), which tracks characteristics of major storms and weather events in the United States from the year 1950 to November 2011.
+
+```{r, cache=TRUE}
+stormData <- read.csv(bzfile("./data/repdata-data-StormData.csv.bz2"))
+```
+
+## Analysis
+
+In the first part of the analysis we investigated which types of events are most harmful with respect to population health. 
+
+```{r analysis health, cache=TRUE}
+# Find death and injuries events
+casualties <- aggregate(stormData[,c("FATALITIES","INJURIES")], by=list(stormData$EVTYPE), "sum")
+
+# Top 10 weather events causing fatalities and injuries
+top_fatalities <- head(casualties[order(casualties$FATALITIES, decreasing = T), ], 10)
+top_injuries <- head(casualties[order(casualties$INJURIES, decreasing = T), ], 10)
+
+top_casualties <- cbind(top_fatalities[,c("Group.1","FATALITIES")],
+                        top_injuries[,c("Group.1","INJURIES")])
+colnames(top_casualties) <- c("Weather Event Fatalities", "Fatalities", "Weather Event Injuries", "Injuries")
+```
+
+```{r results 1, cache=TRUE}
+options("scipen"=100, "digits"=0)
+tot_fatalities <- sum(casualties$FATALITIES)
+tot_injuries <- sum(casualties$INJURIES)
+
+casualties_tornado <- stormData[stormData$EVTYPE == "TORNADO",c("INJURIES","FATALITIES")]
+tot_fatalities_tornado <- sum(casualties_tornado$FATALITIES)
+tot_injuries_tornado <- sum(casualties_tornado$INJURIES)
+
+# Calculate percentages
+percent_fatalities <- tot_fatalities_tornado / tot_fatalities * 100
+percent_injuries <- tot_injuries_tornado / tot_injuries * 100
+```
+
+```{r plot 1}
+# Make plot
+library(ggplot2)
+library(gridExtra)
+graph_fatalities <- ggplot(data=top_fatalities,
+             aes(x=reorder(Group.1, FATALITIES), y=FATALITIES, fill=FATALITIES)) +
+    geom_bar(stat="identity") +
+    coord_flip() +
+    ylab("Total Fatalities") +
+    xlab("Weather Event") +
+    theme(legend.position="none")
+
+graph_injuries <- ggplot(data=top_injuries,
+             aes(x=reorder(Group.1, INJURIES), y=INJURIES, fill=INJURIES)) +
+    geom_bar(stat="identity") +
+    coord_flip() + 
+    ylab("Total Injuries") +
+    xlab("Weather Event") +
+    theme(legend.position="none")
+
+````
+
+
+In the second part of the analysis the types of events which have the greatest economic consequences were investigated.
+
+
+```{r analysis economy, cache=TRUE}
+# Find property damage events
+property_dmg <- stormData[,c("EVTYPE","PROPDMG","PROPDMGEXP","CROPDMG","CROPDMGEXP")]
+
+# Convert letter into exponential value (H -> 10e2, K -> 10e3, M -> 10e6, B -> 10e9)
+exp_transform <- function(x) { 
+        switch(toupper(x), "H" = 10E2, "K" = 10E3, "M" = 10E6, "B" = 10E9 , 1)
+        }
+
+property_dmg$propexp <- sapply(property_dmg$PROPDMGEXP, FUN=exp_transform)
+property_dmg$cropexp <- sapply(property_dmg$CROPDMGEXP, FUN=exp_transform)
+
+property_dmg$PROPDMGEXP <- as.numeric(property_dmg$PROPDMGEXP)
+property_dmg$propdmg <- property_dmg$propexp * property_dmg$PROPDMGEXP
+
+property_dmg$CROPDMGEXP <- as.numeric(property_dmg$CROPDMGEXP)
+property_dmg$cropdmg <- property_dmg$cropexp * property_dmg$CROPDMGEXP
+
+property_dmg$totdmg <- property_dmg$propdmg + property_dmg$cropdmg
+
+economic_dmg <- aggregate(property_dmg[,c("propdmg","cropdmg", "totdmg")], by=list(property_dmg$EVTYPE), "sum")
+
+# Top 10 weather events causing economic damage
+top_propdmg <- head(economic_dmg[order(economic_dmg$propdmg, decreasing = T), ], 10)
+top_cropdmg <- head(economic_dmg[order(economic_dmg$cropdmg, decreasing = T), ], 10)
+top_totdmg <- head(economic_dmg[order(economic_dmg$totdmg,decreasing = T), ], 10)
+
+top_economic <- cbind(top_propdmg[,c("Group.1","propdmg")],
+                      top_cropdmg[,c("Group.1","cropdmg")],
+                      top_totdmg[,c("Group.1","totdmg")])
+colnames(top_economic) <- c("Weather Event Property","Property Damage","Weather Event Crop","Crop Damage", "Weather Event Total", "Total Damage")
+```
+
+```{r plot 2}
+# Make plot
+graph_prop <- ggplot(data=top_propdmg,
+             aes(x=reorder(Group.1, propdmg), y=propdmg, fill=propdmg )) +
+    geom_bar(stat="identity") +
+    coord_flip() +
+    xlab("Weather Event") +
+    ylab("Property Damage ($)") +
+    theme(legend.position="none")
+
+graph_crop <- ggplot(data=top_cropdmg,
+             aes(x=reorder(Group.1, cropdmg), y=cropdmg, fill=cropdmg)) +
+    geom_bar(stat="identity") +
+    coord_flip() + 
+    xlab("Weather Event") +
+    ylab("Crop Damage ($)") + 
+    theme(legend.position="none")
+```
+
+
+```{r results 2, cache=TRUE}
+# Calculate percentage
+tot_propdmg <- sum(property_dmg$totdmg)
+tot_hurrycane <- sum(economic_dmg[economic_dmg$Group.1=="HURRICANE/TYPHOON",c("totdmg")])
+
+percent_hurrycane <- tot_hurrycane / tot_propdmg * 100
+```
+
+
+## Results
+
+Our analysis shows that tornados are by far the most harmful events to human health and are responsible for `r percent_fatalities`% of all fatalities and `r percent_injuries`% of all injuries. 
+
+Below is a table of the top 10 weather events causing fatalities and injuries, respectively:
+
+```{r, results="asis", echo=FALSE}
+library(pander)
+pander(top_casualties)
+```
+
+
+
+Here is the corresponding plot:
+
+```{r plots 1, echo=FALSE}
+grid.arrange(graph_fatalities, graph_injuries, main="Top Harmful Weather Events (1950 - 2011)")
+```
+
+
+
+For what concerns the impact of weather events on the economy, hurrycanes and typhoons are responsible for the most economic losses and account for `r percent_hurrycane`% of property damage.
+
+Below is a table of the top 10 weather events causing property and crop damage, respectively:
+
+```{r, results="asis", echo=FALSE}
+panderOptions("digits", 2)
+pander(top_economic)
+```
+
+
+Here is the corresponding plot:
+
+```{r plots 2, echo=FALSE}
+grid.arrange(graph_prop, graph_crop, main="Top Economic Impact Weather Events (1950-2011)")
+```
