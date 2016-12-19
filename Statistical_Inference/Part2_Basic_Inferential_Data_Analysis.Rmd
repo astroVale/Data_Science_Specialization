@@ -1,0 +1,49 @@
+---
+title: "Statistical Inference Part #2 Basic inferential data analysis"
+author: "Valentina Scipione"
+date: "24 May 2015"
+output: pdf_document
+---
+
+## Basic Inferential Data Analysis
+
+In the second part of this report we analyze the ToothGrowth data in the R datasets package.
+
+Summary of the data:
+```{r}
+# load the dataset
+library(datasets)
+data(ToothGrowth)
+
+# convert variable dose from numeric to factor
+ToothGrowth$dose <- as.factor(ToothGrowth$dose)
+
+# summary statistics for all variables
+summary(ToothGrowth)
+
+# split of cases between different dose levels and delivery methods
+table(ToothGrowth$dose, ToothGrowth$supp)
+
+
+# Plot data set
+library(ggplot2)
+ggplot(data=ToothGrowth, aes(x=as.factor(dose), y=len, fill=supp)) +
+    geom_bar(stat="identity",) +
+    facet_grid(. ~ supp) +
+    xlab("Dose in miligrams") +
+    ylab("Tooth length") +
+    guides(fill=guide_legend(title="Supplement type"))
+```
+
+We use confidence intervals to compare tooth growth by supp and dose, assuming that the two groups are independent and unequal variances.
+
+95% confidence intervals for two variables and the intercept are as follows:
+
+```{r}
+fit <- lm(len ~ dose + supp, data=ToothGrowth)
+confint(fit)
+```
+
+## Conclusions
+
+Assuming the observations are not paired and the two groups have unequal variances, the 95% confidence intervals between the two supplement type groups mean that if we collect a different set of data and estimate parameters of the linear model many times, 95% of the time, the coefficient estimations will be in these ranges. For each coefficient (i.e. intercept, dose and suppVC), the null hypothesis is that the coefficients are zero, meaning that no tooth length variation is explained by that variable. All p-values are less than 0.05, rejecting the null hypothesis and suggesting that each variable explains a significant portion of variability in tooth length, assuming the significance level is 5%.
