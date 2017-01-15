@@ -14,4 +14,4 @@ Note: you are a bit clumsy and you have 0.1% chance of falling down.
 ###  Scripts: 
 1. "empire_game.py" -> One simulation of the game, containing a single randome walk
 2. "empire_distribution.py" -> Distribution of 1000 simulations of the game, used for computing the chance of winning the game bet
-3. "Empire_State_game.ipynb" -> corresponding of empire_distribution.py in Jupiter Notebook
+3. "Empire_State_game.ipynb" -> corresponding of empire_distribution.py in Jupiter Notebook (click this one to view inline plots)
